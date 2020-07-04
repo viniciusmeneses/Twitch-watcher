@@ -4,6 +4,7 @@ services:
     build: .
     image: valorant-watcher:latest
     restart: always
+    env_file: .env
     environment:
       # - token=02rt1omad7ororp
       # - stream=gaules

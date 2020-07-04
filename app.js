@@ -12,7 +12,7 @@ let firstRun = true;
 let cookie = null;
 
 // ========================================== CONFIG SECTION =================================================================
-const stream = process.env.stream || "JohnPitterTV";
+const stream = process.env.stream || "gaules";
 const baseUrl = "https://www.twitch.tv/";
 const streamUrl = baseUrl + stream;
 
@@ -35,7 +35,12 @@ const browserConfig = {
     "--no-zygote",
     "--disable-gpu",
     "--no-sandbox",
-    "--disable-setuid-sandbox"
+    "--disable-setuid-sandbox",
+    "--single-process",
+    "--disable-notifications",
+    "--disable-geolocation",
+    "--disable-infobars",
+    "--silent-debugger-extension-api",
   ]
 }; //https://github.com/D3vl0per/Valorant-watcher/issues/24
 
@@ -73,52 +78,59 @@ const watchStream = async (browser, page) => {
         "waitUntil": "networkidle2",
       }); //https://github.com/puppeteer/puppeteer/blob/master/docs/api.md#pagegobackoptions
 
-      await clickWhenExist(page, cookiePolicyQuery);
-      await clickWhenExist(page, matureContentQuery); //Click on accept button
+      const isOffline = await queryOnWebsite(page, ".channel-root__player--offline");
 
-      await page.waitFor(5000)
+      if (!isOffline) {
+        await clickWhenExist(page, cookiePolicyQuery);
+        await clickWhenExist(page, matureContentQuery); //Click on accept button
 
-      if (firstRun) {
-        console.log("🔧 Setting lowest possible resolution..");
-        await clickWhenExist(page, streamPauseQuery);
+        await page.waitFor(5000)
 
-        await clickWhenExist(page, streamSettingsQuery);
-        await page.waitFor(streamQualitySettingQuery);
+        if (firstRun) {
+          console.log("🔧 Setting lowest possible resolution..");
+          await clickWhenExist(page, streamPauseQuery);
 
-        await clickWhenExist(page, streamQualitySettingQuery);
-        await page.waitFor(streamQualityQuery);
+          await clickWhenExist(page, streamSettingsQuery);
+          await page.waitFor(streamQualitySettingQuery);
 
-        const resolutionOptions = await queryOnWebsite(page, streamQualityQuery);
-        const lowestResolutionId = resolutionOptions[resolutionOptions.length - 1].attribs.id;
-        await page.evaluate((lowestResolutionId) => {
-          document.getElementById(lowestResolutionId).click();
-        }, lowestResolutionId);
+          await clickWhenExist(page, streamQualitySettingQuery);
+          await page.waitFor(streamQualityQuery);
 
-        await clickWhenExist(page, streamPauseQuery);
+          const resolutionOptions = await queryOnWebsite(page, streamQualityQuery);
+          const lowestResolutionId = resolutionOptions[resolutionOptions.length - 1].attribs.id;
+          await page.evaluate((lowestResolutionId) => {
+            document.getElementById(lowestResolutionId).click();
+          }, lowestResolutionId);
 
-        await page.keyboard.press("m"); //For unmute
-        firstRun = false;
+          await clickWhenExist(page, streamPauseQuery);
+
+          await page.keyboard.press("m"); //For unmute
+          firstRun = false;
+        }
+
+        if (browserScreenshot) {
+          await page.waitFor(1000);
+          fs.access(screenshotFolder, error => {
+            if (error) {
+              fs.promises.mkdir(screenshotFolder);
+            }
+          });
+          await page.screenshot({
+            path: `${screenshotFolder}${stream}.png`
+          });
+          console.log("📸 Screenshot created: " + `${stream}.png`);
+        }
+
+        await clickWhenExist(page, sidebarQuery); //Open sidebar
+        await page.waitFor(userStatusQuery); //Waiting for sidebar
+        const status = await queryOnWebsite(page, userStatusQuery); //status jQuery
+        await clickWhenExist(page, sidebarQuery); //Close sidebar
+
+        console.log("💡 Account status:", status[0] ? status[0].children[0].data : "Unknown");
+      } else {
+        console.log("Stream Offline!");
       }
 
-      if (browserScreenshot) {
-        await page.waitFor(1000);
-        fs.access(screenshotFolder, error => {
-          if (error) {
-            fs.promises.mkdir(screenshotFolder);
-          }
-        });
-        await page.screenshot({
-          path: `${screenshotFolder}${stream}.png`
-        });
-        console.log("📸 Screenshot created: " + `${stream}.png`);
-      }
-
-      await clickWhenExist(page, sidebarQuery); //Open sidebar
-      await page.waitFor(userStatusQuery); //Waiting for sidebar
-      const status = await queryOnWebsite(page, userStatusQuery); //status jQuery
-      await clickWhenExist(page, sidebarQuery); //Close sidebar
-
-      console.log("💡 Account status:", status[0] ? status[0].children[0].data : "Unknown");
       console.log("🕒 Time: " + dayjs().format("HH:mm:ss"));
       await page.waitFor(1 * 60 * 60 * 1000); // 1 Hour
     } catch (e) {
