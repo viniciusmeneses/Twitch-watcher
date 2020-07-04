@@ -27,7 +27,7 @@ const proxyAuth = process.env.proxyAuth || "";
 const browserScreenshot = process.env.browserScreenshot || true;
 
 const browserConfig = {
-  headless: process.env.headlessMode || false,
+  headless: process.env.headlessMode || true,
   args: [
     "--disable-dev-shm-usage",
     "--disable-accelerated-2d-canvas",
@@ -80,7 +80,7 @@ const watchStream = async (browser, page) => {
 
       const isOffline = await queryOnWebsite(page, ".channel-root__player--offline");
 
-      if (!isOffline) {
+      if (isOffline.length === 0) {
         await clickWhenExist(page, cookiePolicyQuery);
         await clickWhenExist(page, matureContentQuery); //Click on accept button
 
@@ -128,7 +128,7 @@ const watchStream = async (browser, page) => {
 
         console.log("💡 Account status:", status[0] ? status[0].children[0].data : "Unknown");
       } else {
-        console.log("Stream Offline!");
+        console.log("💡 Stream Offline!");
       }
 
       console.log("🕒 Time: " + dayjs().format("HH:mm:ss"));
