@@ -1,7 +1,5 @@
-FROM node:13.12.0-alpine3.10
-LABEL maintainer="D3v <info@zsmark.dev>"
+FROM buildkite/puppeteer:latest
 
-RUN apk add --no-cache chromium nss freetype freetype-dev harfbuzz ca-certificates ttf-freefont
 
 WORKDIR /usr/src/app
 COPY . .
